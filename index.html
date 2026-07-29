@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>虛擬上皿天平實驗室</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+    background: radial-gradient(circle at top, #f5f0e6, #d9d2c2);
+    margin: 0;
+    padding: 20px;
+    text-align: center;
+    color: #2b2418;
+  }
+  h1 { margin-bottom: 4px; }
+  p.subtitle { color: #5a4f3a; margin-top: 0; }
+
+  /* ---------- 皇冠選擇卡片 ---------- */
+  #crown-select {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin: 20px auto;
+    flex-wrap: wrap;
+  }
+  .crown-card {
+    background: #fffdf6;
+    border: 3px solid #c9b98a;
+    border-radius: 14px;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: all .2s;
+    box-shadow: 0 3px 6px rgba(0,0,0,.15);
+  }
+  .crown-card:hover { transform: translateY(-3px); box-shadow: 0 6px 10px rgba(0,0,0,.2); }
+  .crown-card.active {
+    border-color: #d68a1f;
+    background: #fff4dc;
+    box-shadow: 0 0 0 3px rgba(214,138,31,.4);
+  }
+  .crown-card p { margin: 4px 0 0; font-weight: bold; }
+
+  #reset-btn {
+    font-size: 15px;
+    padding: 10px 20px;
+    margin: 6px;
+    border: none;
+    border-radius: 8px;
+    background: #7a6a52;
+    color: white;
+    cursor: pointer;
+  }
+  #reset-btn:hover { background: #5f5240; }
+
+  /* ---------- 天平視覺（擬真金屬風格） ---------- */
+  #balance-wrap {
+    position: relative;
+    width: 620px;
+    max-width: 95vw;
+    height: 360px;
+    margin: 30px auto 10px;
+  }
+  .wood-base {
+    position: absolute;
+    left: 50%;
+    bottom: 20px;
+    width: 240px;
+    height: 26px;
+    background: linear-gradient(180deg, #8a5a2b, #5c3a1a);
+    border-radius: 6px;
+    transform: translateX(-50%);
+    box-shadow: 0 4px 6px rgba(0,0,0,.35);
+  }
+  .pillar {
+    position: absolute;
+    left: 50%;
+    top: 55px;
+    width: 20px;
+    height: 190px;
+    background: linear-gradient(90deg, #6e6e6e, #d8d8d8 40%, #6e6e6e);
+    transform: translateX(-50%);
+    border-radius: 4px;
+    box-shadow: inset 0 0 4px rgba(0,0,0,.4);
+  }
+  .pivot {
+    position: absolute;
+    left: 50%;
+    top: 46px;
+    width: 26px;
+    height: 26px;
+    background: radial-gradient(circle at 35% 30%, #eee, #888 70%, #333);
+    border-radius: 50%;
+    transform: translateX(-50%);
+    z-index: 6;
+    box-shadow: 0 2px 3px rgba(0,0,0,.4);
+  }
+  .scale-arc {
+    position: absolute;
+    left: 50%;
+    top: 20px;
+    width: 200px;
+    height: 100px;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+  #beam-assembly {
+    position: absolute;
+    left: 50%;
+    top: 58px;
+    width: 520px;
+    height: 14px;
+    transform-origin: center center;
+    transform: translateX(-50%) rotate(0deg);
+    transition: transform .5s ease;
+    z-index: 4;
+  }
+  .beam {
+    width: 100%;
+    height: 14px;
+    background: linear-gradient(180deg, #f0f0f0, #9c9c9c 45%, #6b6b6b);
+    border-radius: 6px;
+    box-shadow: 0 2px 3px rgba(0,0,0,.35);
+  }
+  .beam-tip {
+    position: absolute;
+    top: -3px;
+    width: 10px;
+    height: 20px;
+    background: linear-gradient(180deg, #ffd94a, #b8860b);
+    border-radius: 2px;
+  }
+  .tip-left { left: 4px; }
+  .tip-right { right: 4px; }
+
+  .hook {
+    position: absolute;
+    top: 12px;
+    width: 3px;
+    height: 8px;
+    background: #777;
+  }
+  .left-hook { left: 24px; }
+  .right-hook { right: 24px; }
+
+  /* 吊繩：用三條線模擬秤盤支架 */
+  .strings {
+    position: absolute;
+    top: 20px;
+    width: 120px;
+    height: 55px;
+  }
+  .left-strings { left: -35px; }
+  .right-strings { right: -35px; }
+  .strings::before, .strings::after, .strings .mid {
+    content: "";
+    position: absolute;
+    top: 0;
+    width: 1.5px;
+    height: 55px;
+    background: #888;
+  }
+  .strings::before { left: 10px; transform: rotate(-8deg); transform-origin: top; }
+  .strings::after { right: 10px; transform: rotate(8deg); transform-origin: top; }
+  .strings .mid { left: 50%; transform: translateX(-50%); }
+
+  .pan {
+    position: absolute;
+    top: 72px;
+    width: 130px;
+    height: 26px;
+    background: linear-gradient(180deg, #e8e8e8, #b0b0b0 60%, #8c8c8c);
+    border: 2px solid #7d7d7d;
+    border-radius: 50% / 100% 100% 0 0;
+    box-shadow: inset 0 -3px 4px rgba(0,0,0,.25), 0 3px 5px rgba(0,0,0,.25);
+  }
+  .left-pan { left: -30px; }
+  .right-pan { right: -30px; }
+
+  .pan-surface {
+    position: absolute;
+    top: 4px;
+    left: 8px;
+    right: 8px;
+    bottom: 4px;
+    border-radius: 50% / 100% 100% 0 0;
+    background: linear-gradient(180deg, #f6f6f6, #cfcfcf);
+  }
+
+  .pan-content {
+    position: absolute;
+    bottom: 20px;
+    left: 0;
+    right: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    align-items: flex-end;
+    justify-content: center;
+    min-height: 60px;
+  }
+
+  .crown-label-tag {
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: #fff;
+    font-size: 12px;
+    padding: 1px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  /* ---------- 砝碼樣式（擬真砝碼：梯形砝碼身 + 上方提環）---------- */
+  .weight {
+    position: relative;
+    cursor: grab;
+    margin-top: 14px;
+    user-select: none;
+  }
+  .weight .ring {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 3px solid #444;
+    border-bottom: none;
+    border-radius: 50% 50% 0 0;
+  }
+  .weight .body {
+    background: linear-gradient(120deg, #ffe27a, #c99a2e 55%, #8a6a1a);
+    border: 1px solid #6b511a;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    color: #3b2b0a;
+    font-weight: bold;
+    text-shadow: 0 1px 0 rgba(255,255,255,.4);
+    box-shadow: inset -4px -4px 6px rgba(0,0,0,.25), inset 3px 3px 5px rgba(255,255,255,.4);
+  }
+
+  .weight[data-value="500"] .ring { width: 20px; height: 10px; }
+  .weight[data-value="500"] .body {
+    width: 56px; height: 46px; font-size: 13px;
+    clip-path: polygon(15% 100%, 85% 100%, 72% 0%, 28% 0%);
+  }
+  .weight[data-value="200"] .ring { width: 16px; height: 8px; }
+  .weight[data-value="200"] .body {
+    width: 46px; height: 38px; font-size: 12px;
+    clip-path: polygon(15% 100%, 85% 100%, 70% 0%, 30% 0%);
+  }
+  .weight[data-value="10"] .ring { width: 12px; height: 6px; }
+  .weight[data-value="10"] .body {
+    width: 32px; height: 24px; font-size: 10px;
+    clip-path: polygon(12% 100%, 88% 100%, 68% 0%, 32% 0%);
+  }
+  .weight[data-value="1"] .ring { width: 9px; height: 5px; }
+  .weight[data-value="1"] .body {
+    width: 22px; height: 16px; font-size: 8px;
+    clip-path: polygon(10% 100%, 90% 100%, 65% 0%, 35% 0%);
+  }
+
+  #info { margin-top: 14px; font-size: 18px; }
+  #status-msg {
+    font-size: 20px;
+    font-weight: bold;
+    min-height: 28px;
+    color: #2a8f2a;
+  }
+
+  /* ---------- 砝碼盒 ---------- */
+  #weight-tray {
+    margin: 24px auto;
+    max-width: 720px;
+    background: #fffdf6;
+    border: 2px solid #c9b98a;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 3px 8px rgba(0,0,0,.15);
+  }
+  .weight-group {
+    display: inline-block;
+    vertical-align: top;
+    margin: 0 16px;
+  }
+  .weight-group h4 { margin: 4px 0; color: #5a4f3a; }
+  .weight-group .items {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    min-height: 60px;
+    align-items: flex-end;
+  }
+  .drag-over { background: rgba(214,138,31,0.15) !important; }
+</style>
+</head>
+<body>
+
+<h1>⚖️ 虛擬上皿天平實驗室</h1>
+<p class="subtitle">選一個皇冠放上左盤，拖曳砝碼到右盤，靠天平的傾斜方向找出皇冠的質量！</p>
+
+<div id="crown-select">
+  <div class="crown-card" data-crown="A">
+    <svg viewBox="0 0 100 90" width="80" height="72">
+      <rect x="10" y="55" width="80" height="25" rx="4" fill="url(#goldGrad)" stroke="#8a6d1f" stroke-width="2"/>
+      <polygon points="15,55 25,20 35,55" fill="url(#goldGrad)" stroke="#8a6d1f" stroke-width="2"/>
+      <polygon points="35,55 50,10 65,55" fill="url(#goldGrad)" stroke="#8a6d1f" stroke-width="2"/>
+      <polygon points="65,55 75,20 85,55" fill="url(#goldGrad)" stroke="#8a6d1f" stroke-width="2"/>
+      <circle cx="25" cy="18" r="4" fill="#fff8dc" stroke="#8a6d1f"/>
+      <circle cx="50" cy="8" r="5" fill="#fff8dc" stroke="#8a6d1f"/>
+      <circle cx="75" cy="18" r="4" fill="#fff8dc" stroke="#8a6d1f"/>
+      <circle cx="25" cy="67" r="5" fill="#3f6fbf" stroke="#22345c"/>
+      <circle cx="40" cy="67" r="5" fill="#d64545" stroke="#7a1f1f"/>
+      <circle cx="50" cy="67" r="5" fill="#3f6fbf" stroke="#22345c"/>
+      <circle cx="60" cy="67" r="5" fill="#d64545" stroke="#7a1f1f"/>
+      <circle cx="75" cy="67" r="5" fill="#3f6fbf" stroke="#22345c"/>
+    </svg>
+    <p>皇冠 A</p>
+  </div>
+
+  <div class="crown-card" data-crown="B">
+    <svg viewBox="0 0 100 100" width="80" height="80">
+      <rect x="10" y="65" width="80" height="22" rx="4" fill="url(#goldGrad)" stroke="#8a6d1f" stroke-width="2"/>
+      <path d="M15,65 Q15,25 50,35 Q85,25 85,65" fill="none" stroke="url(#goldGrad)" stroke-width="8" stroke-linecap="round"/>
+      <path d="M50,35 L50,15" stroke="url(#goldGrad)" stroke-width="6" stroke-linecap="round"/>
+      <path d="M44,20 L56,20 M50,14 L50,26" stroke="url(#goldGrad)" stroke-width="4" stroke-linecap="round"/>
+      <ellipse cx="50" cy="46" rx="7" ry="11" fill="#3f6fbf" stroke="#22345c" stroke-width="2"/>
+      <circle cx="25" cy="76" r="5" fill="#3f8f3f" stroke="#1f4a1f"/>
+      <circle cx="40" cy="76" r="5" fill="#d64545" stroke="#7a1f1f"/>
+      <circle cx="50" cy="76" r="5" fill="#3f8f3f" stroke="#1f4a1f"/>
+      <circle cx="60" cy="76" r="5" fill="#d64545" stroke="#7a1f1f"/>
+      <circle cx="75" cy="76" r="5" fill="#3f8f3f" stroke="#1f4a1f"/>
+    </svg>
+    <p>皇冠 B</p>
+  </div>
+
+  <div class="crown-card" data-crown="C">
+    <svg viewBox="0 0 100 90" width="80" height="72">
+      <rect x="10" y="55" width="80" height="25" rx="4" fill="url(#goldGrad)" stroke="#8a6d1f" stroke-width="2"/>
+      <polygon points="10,55 18,35 26,55 34,25 42,55 50,15 58,55 66,25 74,55 82,35 90,55" fill="url(#goldGrad)" stroke="#8a6d1f" stroke-width="2"/>
+      <circle cx="18" cy="33" r="3" fill="#fff8dc"/>
+      <circle cx="34" cy="23" r="3" fill="#fff8dc"/>
+      <circle cx="50" cy="13" r="4" fill="#fff8dc"/>
+      <circle cx="66" cy="23" r="3" fill="#fff8dc"/>
+      <circle cx="82" cy="33" r="3" fill="#fff8dc"/>
+      <path d="M50,25 Q57,36 50,52 Q43,36 50,25 Z" fill="#3f6fbf" stroke="#22345c" stroke-width="2"/>
+      <circle cx="30" cy="67" r="5" fill="#d64545" stroke="#7a1f1f"/>
+      <circle cx="70" cy="67" r="5" fill="#d64545" stroke="#7a1f1f"/>
+    </svg>
+    <p>皇冠 C</p>
+  </div>
+</div>
+
+<button id="reset-btn">🔄 重置實驗</button>
+
+<!-- 隱藏的共用漸層定義 -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffe27a"/>
+      <stop offset="50%" stop-color="#d4a017"/>
+      <stop offset="100%" stop-color="#8a6d1f"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<div id="balance-wrap">
+  <div class="wood-base"></div>
+  <div class="pillar"></div>
+  <div class="pivot"></div>
+
+  <div id="beam-assembly">
+    <div class="beam"></div>
+    <div class="beam-tip tip-left"></div>
+    <div class="beam-tip tip-right"></div>
+    <div class="hook left-hook"></div>
+    <div class="hook right-hook"></div>
+
+    <div class="strings left-strings"><div class="mid"></div></div>
+    <div class="strings right-strings"><div class="mid"></div></div>
+
+    <div class="pan left-pan" id="leftPan">
+      <span class="crown-label-tag" id="leftPanLabel" style="display:none;">左盤：皇冠</span>
+      <div class="pan-surface"></div>
+      <div class="pan-content" id="leftPanContent"></div>
+    </div>
+
+    <div class="pan right-pan" id="rightPan">
+      <span class="crown-label-tag">右盤：砝碼</span>
+      <div class="pan-surface"></div>
+      <div class="pan-content" id="rightPanContent"></div>
+    </div>
+  </div>
+</div>
+
+<div id="info">
+  <p id="status-msg"></p>
+</div>
+
+<div id="weight-tray">
+  <h3>砝碼盒（拖曳或點擊加入右盤）</h3>
+  <div class="weight-group" data-type="500"><h4>500 g</h4><div class="items"></div></div>
+  <div class="weight-group" data-type="200"><h4>200 g</h4><div class="items"></div></div>
+  <div class="weight-group" data-type="10"><h4>10 g</h4><div class="items"></div></div>
+  <div class="weight-group" data-type="1"><h4>1 g</h4><div class="items"></div></div>
+</div>
+
+<script>
+(function () {
+  const weightTypes = [500, 200, 10, 1];
+  const trayCounts = { 500: 5, 200: 5, 10: 5, 1: 5 };
+  const rightPanItems = []; // {id, value}
+  let idCounter = 0;
+  let selectedCrown = null; // 'A' | 'B' | 'C' | null
+  const CROWN_MASS = 1000;
+
+  // 每款皇冠的 SVG（與選擇卡片一致，用於放到左盤）
+  const crownSVGs = {
+    A: `<svg viewBox="0 0 100 90" width="70" height="62">
+          <rect x="10" y="55" width="80" height="25" rx="4" fill="url(#goldGrad)" stroke="#8a6d1f" stroke-width="2"/>
+          <polygon points="15,55 25,20 35,55" fill="url(#goldGrad)" stroke="#8a6d1f" stroke-width="2"/>
+          <polygon points="35,55 50,10 65,55" fill="url(#goldGrad)" stroke="#8a6d1f" stroke-width="2"/>
+          <polygon points="65,55 75,20 85,55" fill="url(#goldGrad)" stroke="#8a6d1f" stroke-width="2"/>
+          <circle cx="25" cy="18" r="4" fill="#fff8dc" stroke="#8a6d1f"/>
+          <circle cx="50" cy="8" r="5" fill="#fff8dc" stroke="#8a6d1f"/>
+          <circle cx="75" cy="18" r="4" fill="#fff8dc" stroke="#8a6d1f"/>
+          <circle cx="25" cy="67" r="5" fill="#3f6fbf" stroke="#22345c"/>
+          <circle cx="40" cy="67" r="5" fill="#d64545" stroke="#7a1f1f"/>
+          <circle cx="50" cy="67" r="5" fill="#3f6fbf" stroke="#22345c"/>
+          <circle cx="60" cy="67" r="5" fill="#d64545" stroke="#7a1f1f"/>
+          <circle cx="75" cy="67" r="5" fill="#3f6fbf" stroke="#22345c"/>
+        </svg>`,
+    B: `<svg viewBox="0 0 100 100" width="70" height="70">
+          <rect x="10" y="65" width="80" height="22" rx="4" fill="url(#goldGrad)" stroke="#8a6d1f" stroke-width="2"/>
+          <path d="M15,65 Q15,25 50,35 Q85,25 85,65" fill="none" stroke="url(#goldGrad)" stroke-width="8" stroke-linecap="round"/>
+          <path d="M50,35 L50,15" stroke="url(#goldGrad)" stroke-width="6" stroke-linecap="round"/>
+          <path d="M44,20 L56,20 M50,14 L50,26" stroke="url(#goldGrad)" stroke-width="4" stroke-linecap="round"/>
+          <ellipse cx="50" cy="46" rx="7" ry="11" fill="#3f6fbf" stroke="#22345c" stroke-width="2"/>
+          <circle cx="25" cy="76" r="5" fill="#3f8f3f" stroke="#1f4a1f"/>
+          <circle cx="40" cy="76" r="5" fill="#d64545" stroke="#7a1f1f"/>
+          <circle cx="50" cy="76" r="5" fill="#3f8f3f" stroke="#1f4a1f"/>
+          <circle cx="60" cy="76" r="5" fill="#d64545" stroke="#7a1f1f"/>
+          <circle cx="75" cy="76" r="5" fill="#3f8f3f" stroke="#1f4a1f"/>
+        </svg>`,
+    C: `<svg viewBox="0 0 100 90" width="70" height="62">
+          <rect x="10" y="55" width="80" height="25" rx="4" fill="url(#goldGrad)" stroke="#8a6d1f" stroke-width="2"/>
+          <polygon points="10,55 18,35 26,55 34,25 42,55 50,15 58,55 66,25 74,55 82,35 90,55" fill="url(#goldGrad)" stroke="#8a6d1f" stroke-width="2"/>
+          <circle cx="18" cy="33" r="3" fill="#fff8dc"/>
+          <circle cx="34" cy="23" r="3" fill="#fff8dc"/>
+          <circle cx="50" cy="13" r="4" fill="#fff8dc"/>
+          <circle cx="66" cy="23" r="3" fill="#fff8dc"/>
+          <circle cx="82" cy="33" r="3" fill="#fff8dc"/>
+          <path d="M50,25 Q57,36 50,52 Q43,36 50,25 Z" fill="#3f6fbf" stroke="#22345c" stroke-width="2"/>
+          <circle cx="30" cy="67" r="5" fill="#d64545" stroke="#7a1f1f"/>
+          <circle cx="70" cy="67" r="5" fill="#d64545" stroke="#7a1f1f"/>
+        </svg>`
+  };
+
+  const leftPanContent = document.getElementById("leftPanContent");
+  const rightPanContent = document.getElementById("rightPanContent");
+  const leftPanLabel = document.getElementById("leftPanLabel");
+  const beamAssembly = document.getElementById("beam-assembly");
+  const statusMsg = document.getElementById("status-msg");
+  const rightPan = document.getElementById("rightPan");
+
+  // ---------- 皇冠選擇 ----------
+  document.querySelectorAll(".crown-card").forEach(card => {
+    card.addEventListener("click", () => {
+      selectedCrown = card.dataset.crown;
+      document.querySelectorAll(".crown-card")
+        .forEach(c => c.classList.toggle("active", c === card));
+      renderLeftPan();
+      updateBalance();
+    });
+  });
+
+  document.getElementById("reset-btn").addEventListener("click", resetAll);
+
+  function resetAll() {
+    selectedCrown = null;
+    rightPanItems.length = 0;
+    weightTypes.forEach(t => trayCounts[t] = 5);
+    document.querySelectorAll(".crown-card").forEach(c => c.classList.remove("active"));
+    renderLeftPan();
+    renderTray();
+    renderRightPan();
+    updateBalance();
+  }
+
+  function renderLeftPan() {
+    leftPanContent.innerHTML = "";
+    if (selectedCrown) {
+      leftPanLabel.style.display = "block";
+      leftPanLabel.textContent = "左盤：皇冠 " + selectedCrown;
+      const wrap = document.createElement("div");
+      wrap.innerHTML = crownSVGs[selectedCrown];
+      leftPanContent.appendChild(wrap.firstElementChild);
+    } else {
+      leftPanLabel.style.display = "none";
+    }
+  }
+
+  // ---------- 砝碼盒渲染 ----------
+  function renderTray() {
+    weightTypes.forEach(type => {
+      const group = document.querySelector(`.weight-group[data-type="${type}"] .items`);
+      group.innerHTML = "";
+      for (let i = 0; i < trayCounts[type]; i++) {
+        const w = createWeightEl(type, "tray");
+        group.appendChild(w);
+      }
+    });
+  }
+
+  function createWeightEl(value, location, id) {
+    const el = document.createElement("div");
+    el.className = "weight";
+    el.dataset.value = value;
+    el.draggable = true;
+    if (location === "pan") el.dataset.id = id;
+
+    const ring = document.createElement("div");
+    ring.className = "ring";
+    const body = document.createElement("div");
+    body.className = "body";
+    body.textContent = value + "g";
+
+    el.appendChild(ring);
+    el.appendChild(body);
+
+    el.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/plain", JSON.stringify({ value, location, id: el.dataset.id || null }));
+    });
+
+    el.addEventListener("click", () => {
+      if (location === "tray") {
+        moveTrayToPan(value);
+      } else {
+        moveWeightBackToTray(el.dataset.id);
+      }
+    });
+
+    return el;
+  }
+
+  function renderRightPan() {
+    rightPanContent.innerHTML = "";
+    rightPanItems.forEach(item => {
+      const el = createWeightEl(item.value, "pan", item.id);
+      rightPanContent.appendChild(el);
+    });
+  }
+
+  // ---------- 拖曳事件：右盤 ----------
+  rightPan.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    rightPan.classList.add("drag-over");
+  });
+  rightPan.addEventListener("dragleave", () => rightPan.classList.remove("drag-over"));
+  rightPan.addEventListener("drop", (e) => {
+    e.preventDefault();
+    rightPan.classList.remove("drag-over");
+    const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+    if (data.location === "tray") {
+      moveTrayToPan(data.value);
+    }
+  });
+
+  // ---------- 拖曳事件：砝碼盒（拖回去即移除）----------
+  document.getElementById("weight-tray").addEventListener("dragover", (e) => e.preventDefault());
+  document.getElementById("weight-tray").addEventListener("drop", (e) => {
+    e.preventDefault();
+    const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+    if (data.location === "pan") {
+      moveWeightBackToTray(data.id);
+    }
+  });
+
+  function moveTrayToPan(value) {
+    if (trayCounts[value] <= 0) return;
+    trayCounts[value] -= 1;
+    idCounter += 1;
+    rightPanItems.push({ id: String(idCounter), value: Number(value) });
+    renderTray();
+    renderRightPan();
+    updateBalance();
+  }
+
+  function moveWeightBackToTray(id) {
+    const idx = rightPanItems.findIndex(i => i.id === id);
+    if (idx === -1) return;
+    const value = rightPanItems[idx].value;
+    rightPanItems.splice(idx, 1);
+    trayCounts[value] += 1;
+    renderTray();
+    renderRightPan();
+    updateBalance();
+  }
+
+  // ---------- 天平物理計算 ----------
+  function updateBalance() {
+    const leftMass = selectedCrown ? CROWN_MASS : 0;
+    const rightMass = rightPanItems.reduce((sum, i) => sum + i.value, 0);
+
+    const diff = rightMass - leftMass;
+    let angle = diff * 0.02;
+    angle = Math.max(-18, Math.min(18, angle));
+    beamAssembly.style.transform = `translateX(-50%) rotate(${angle}deg)`;
+
+    leftPanContent.style.transform = `rotate(${-angle}deg)`;
+    rightPanContent.style.transform = `rotate(${-angle}deg)`;
+
+    if (!selectedCrown) {
+      statusMsg.textContent = "請先選擇一個皇冠放上左盤";
+      statusMsg.style.color = "#666";
+    } else if (rightMass === leftMass) {
+      statusMsg.textContent = `⚖️ 平衡了！皇冠 ${selectedCrown} 的質量就是你放上去的砝碼總和`;
+      statusMsg.style.color = "#2a8f2a";
+    } else if (rightMass > leftMass) {
+      statusMsg.textContent = "右盤太重了，拿掉一些砝碼";
+      statusMsg.style.color = "#c0392b";
+    } else {
+      statusMsg.textContent = "右盤太輕了，再加一些砝碼";
+      statusMsg.style.color = "#c0392b";
+    }
+  }
+
+  // ---------- 初始化 ----------
+  renderTray();
+  renderRightPan();
+  renderLeftPan();
+  updateBalance();
+})();
+</script>
+
+</body>
+</html>
